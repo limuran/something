@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>拼图dome</title>
+    <script>
+        (function (doc, win) {
+            var docEle = doc.documentElement,
+                isIos = navigator.userAgent.match(/iphone|ipod|ipad/gi),
+                dpr=Math.min(win.devicePixelRatio, 3),
+                scale = 1 / dpr;
+
+            resizeEvent = 'orientationchange' in window ? 'orientationchange' : 'resize';
+            docEle.dataset.dpr = dpr;
+
+            var metaEle = doc.createElement('meta');
+            metaEle.name = 'viewport';
+            metaEle.content = 'initial-scale=' + scale + ',maximum-scale=' + scale+',user-scalable=no';
+            docEle.firstElementChild.appendChild(metaEle);
+
+            function recalCulate(){
+                var width = docEle.clientWidth;
+                if (width / dpr > 640) {
+                    width = 640 * dpr;
+                }
+                docEle.style.fontSize = 20 * (width / 750) + 'px';
+            }
+
+            recalCulate();
+            if (!doc.addEventListener) return;
+            win.addEventListener(resizeEvent, recalCulate, false);
+        })(document, window);
+    </script>
+
+    <style>
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        #appbox,#piclist{
+            margin: 0 auto;
+            padding: .75rem;
+            position: relative;
+        }
+        .nitem {
+            position: absolute;
+            background: url(img/meinv.jpg) 0 0 no-repeat;
+            -webkit-background-size: 36rem;
+            background-size: 36rem;
+            font-size: 1.5rem;
+            text-align: center;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 0;
+            display: inline-block;
+            border: 2px solid #eee;
+            transition: all .1s;
+            -moz-transition: all .1s; /* Firefox 4 */
+            -webkit-transition: all .1s; /* Safari 和 Chrome */
+            -o-transition: all .1s; /* Opera */
+            transition-timing-function: ease-in-out;
+        }
+        #btn{
+            position: absolute;
+            top: 42rem;padding: 1rem;
+            font-size: 2rem;
+        }
+
+        p{
+            position: absolute;
+            top: 37rem;padding: 1rem;
+            font-size: 2rem;
+        }
+    </style>
+</head>
+<body>
+<div id="appbox">
+    <div id="piclist">
+        <div class="nitem" v-model="randomArr[index]"
+             v-for="(item,index) in itemlist"
+             :id="'piclist_'+randomArr[index]"
+             :index="randomArr[index]"
+             :style="{
+                'width':width+'rem',
+                'height':height+'rem',
+                'line-height':height+'rem',
+                'backgroundPosition':-px(index)+'rem -' + py(index) + 'rem',
+                'left':left(index)+'rem',
+                'top': top(index)+'rem'
+               }">
+            {{index}}
+        </div>
+        <button v-model="isDisabled" id="btn" @click="randomArrs" :disabled="isDisabled" >11点击切换</button>
+    </div>
+    <p id="p">我是打酱油的,只要把isDrag设置为：true，我就可以拖拽了</p>
+</div>
+<script src=js/vue.min.js></script>
+<script>
+    var vm = new Vue({
+        el: "#appbox",
+        data: {
+            itemlist: [],
+            randomArr:[],
+            isDisabled:true,
+            width:9,
+            height:9,
+            rows: 4,
+            cols: 4
+        },
+        methods: {
+            px:function(index){
+                return (index % this.rows) * (this.width)
+            },
+            py:function(index){
+                return parseInt((index / this.cols)) * (this.height);
+            },
+            left:function (index) {
+                return (this.randomArr[index] % this.rows) * (this.width)
+            },
+            top:function (index) {
+                return parseInt((this.randomArr[index] / this.cols)) * (this.height);
+            },
+            randomArrs:function(){
+              this.randomArr.sort(function(){ return 0.5 - Math.random() });
+            }
+        },
+        created: function (){
+            for (var i = 0; i < this.rows * this.cols; i++) {
+                this.itemlist.push(i);
+                this.randomArr.push(i);
+            }
+            this.randomArrs();
+        }
+    });
+
+
+    window.onload=function () {
+        var els = document.getElementsByClassName("nitem");
+         window.mqq = new PuzzleFn({});
+         var m = new PuzzleFn({
+             isDrag:true
+         });
+         var mp = document.getElementById("p");
+         m.elemTouch(mp,function (res) {
+             var style = window.getComputedStyle(res.el, null);
+             res.el.style.left = res.x -(parseInt(style.width)/2)+'px';
+             res.el.style.top = res.y-(parseInt(style.height)/2)+'px';
+             res.el.style.color = 'red';
+
+             console.log(res.el.style.top);
+             console.log(style.width);
+         });
+
+        for(var index = 0,len = els.length; index<len; index++){
+            setTimeout(function (i) {
+                mqq.elemTouch(els[i],function (res) {
+                    var el = res.el,
+                        $this = res.this,
+                        index = el.getAttribute('index'),
+                        direction = res.direction,
+                        elBound = getBound(res.el.getAttribute('index'));// 当前元素可活动范围==》 i:表示当前元素的下标
+                        if(elBound.length>0){
+                            for(var key in elBound){ // 遍历可活动范围的参数
+                                if(elBound[key].direction == direction.index){ // 如果当前滑动在可活动范围内，就替换当前元素的位置
+                                    var newElem = document.getElementById("piclist_"+elBound[key].index);// 获取要替换位置的元素
+                                    var newElemIndex = newElem.getAttribute('index');// 获取要替换位置元素的下标
+                                    newElem.style.left = res.el.style.left;
+                                    newElem.style.top =  res.el.style.top;
+                                    newElem.id = "piclist_"+index;
+                                    newElem.setAttribute('index',index);// 将当前元素的下标赋值给替换位置后元素的下标
+                                    el.style.left = $this.getCss(newElem,'left');
+                                    el.style.top = $this.getCss(newElem,'top');
+                                    el.setAttribute('index',newElemIndex);// 将当前元素的下标赋值给替换位置后元素的下标
+                                    el.id ="piclist_"+ newElemIndex;// 将当前元素的下标赋值给替换位置后元素的下标
+                                    var elemList = [];
+                                    for(var k = 0,len = els.length; k<len; k++){
+                                        elemList.push(els[k].getAttribute('index'));
+                                    }
+                                    if(elemList.join(",") == vm.itemlist.join(",")){
+                                        alert("拼图完成！");
+                                        vm.randomArr.sort(function (a,b) {
+                                            return a - b;
+                                        });
+                                        console.log(vm.randomArr);
+                                        vm.isDisabled = false;
+                                    }else{
+                                        console.log("元素："+elemList.join(","));
+                                        console.log(vm.itemlist.join(','));
+                                    }
+
+                                }
+                            }
+                        }
+                });
+            }(index),0)
+
+        }
+
+    };
+
+    function getrow(index) {
+        return parseInt(index / vm.cols);
+    }
+    function getcols(index) {
+        return index % vm.rows;
+    }
+    function getBound(index) {
+        index = parseInt(index);
+        var left = index - 1;
+        var right = index + 1;
+        var top = index - vm.rows;
+        var bottom = index + vm.rows;
+        var len = vm.itemlist.length; //总长度
+        var currentRow = getrow(index);
+        var currentCol = getcols(index);
+        var roundArr = [];
+        if (left >= 0 && left < len && getrow(left) == currentRow) {
+            roundArr.push({index:left,direction:3,gesture:'left'});
+        }
+        if (right >= 0 && right < len && getrow(right) == currentRow) {
+            roundArr.push({index:right,direction:4,gesture:'right'});
+        }
+        if (top >= 0 && top < len && getcols(top) == currentCol) {
+            roundArr.push({index:top,direction:1,gesture:'top'});
+        }
+        if (bottom >= 0 && bottom < len && getcols(bottom) == currentCol) {
+            roundArr.push({index:bottom,direction:2,gesture:'bottom'});
+        }
+        return roundArr;
+    }
+
+    function PuzzleFn(obj) {
+    this.startx = obj.startx|| 0;
+    this.starty = obj.startx|| 0;
+    this.left= obj.left|| 0;
+    this.top= obj.top|| 0;
+    this.isDrag= obj.isDrag || false;
+    this.moveCallback = null;
+
+    //获得角度
+    function getAngle(angx, angy) {
+        return Math.atan2(angy, angx) * 180 / Math.PI;
+    }
+    //根据起点终点返回方向 1向上 2向下 3向左 4向右 0未滑动
+    this.getDirection = function (startx, starty, endx, endy) {
+        var angx = endx - startx;
+        var angy = endy - starty;
+        var result = {index:0,direction:"未滑动"};
+
+        //如果滑动距离太短
+        if (Math.abs(angx) < 20 && Math.abs(angy) < 20) {
+            return result;
+        }
+
+        var angle = getAngle(angx, angy);
+        if (angle >= -135 && angle <= -45) {
+            result.index = 1;
+            result.direction = '向上';
+        } else if (angle > 45 && angle < 135) {
+            result.index = 2;
+            result.direction = '向下';
+        } else if ((angle >= 135 && angle <= 180) || (angle >= -180 && angle < -135)) {
+            result.index = 3;
+            result.direction = '向左';
+        } else if (angle >= -45 && angle <= 45) {
+            result.index = 4;
+            result.direction = '向右';
+        }
+        return result;
+    };
+    //获取相关CSS属性
+    this.getCss = function(el,key){
+        return el.currentStyle? el.currentStyle[key] : document.defaultView.getComputedStyle(el,false)[key];
+    };
+    this.elemTouch = function (el,callback) {
+        //手指接触屏幕
+        var $this = this;
+        el.addEventListener('touchstart',function (event) {
+            if(!event){
+                event = window.event;
+                //防止IE文字选中
+                bar.onselectstart = function(){
+                    return false;
+                }
+            }
+            $this.startx = event.touches[0].pageX;
+            $this.starty = event.touches[0].pageY;
+            $this.left= $this.getCss(event.target,'left');
+            $this.top = $this.getCss(event.target,'top');
+
+        },false);
+        //手指在屏幕上移动
+        el.addEventListener('touchmove',function (event) {
+            var e = event ? event: window.event;
+            if($this.isDrag){
+                var moveX = e.touches[0].pageX;
+                var movey = e.touches[0].pageY;
+                var style = null;
+                if (window.getComputedStyle) {
+                    style = window.getComputedStyle(e.target, null);    // 非IE
+                } else {
+                    style = e.target.currentStyle;  // IE
+                }
+                var width =  parseInt(style.width);
+                var height =  parseInt(style.height);
+                e.target.style.top = movey -(height/2)+'px';
+                e.target.style.left = moveX-(width/2)+'px';
+                e.target.style.zIndex = 9999;
+                if (event.preventDefault) {
+                    event.preventDefault();
+                }
+                return false;
+            }
+
+        },false);
+
+        //手指离开屏幕
+        el.addEventListener('touchend',function (event) {
+            var endx, endy;
+            endx = event.changedTouches[0].pageX;
+            endy = event.changedTouches[0].pageY;
+            var direction = $this.getDirection($this.startx, $this.starty, endx, endy);
+            if($this.isDrag){
+                var e = event ? event: window.event;
+                e.target.style.top = $this.top;
+                e.target.style.left = $this.left;
+                e.target.style.zIndex = 1;
+            }
+            if (typeof callback == "function") {
+                callback({
+                    el:this,
+                    x: endx,
+                    y:endy,
+                    oldX:$this.startx,
+                    oldY:$this.starty,
+                    isDrag:$this.isDrag,
+                    direction:direction,
+                    this:$this
+                });
+            }
+        },false);
+
+    };
+
+}
+
+</script>
+</body>
+</html>
